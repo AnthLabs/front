@@ -34,9 +34,9 @@ export async function uploadVideo(roomId, file) {
 
   const body = await response.json();
 
-  if (!response.ok || !body.success) {
+  if (!response.ok) {
     throw new Error(body.error?.message ?? 'Erreur upload');
   }
 
-  return body.data;
+  return body;
 }

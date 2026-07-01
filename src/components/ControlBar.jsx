@@ -20,18 +20,20 @@ export default function ControlBar({ playerRef }) {
     );
   }
 
-  const getPos = () =>
-    playerRef?.current?.getCurrentTime?.() ?? playbackState.currentTimeSec;
+  const getPos = () => playerRef?.current?.currentTime ?? playbackState.currentTimeSec;
+  const seekPlayer = (position) => {
+    if (playerRef?.current) playerRef.current.currentTime = position;
+  };
 
   const handleSeekBackward = () => {
     const newPos = Math.max(0, getPos() - 10);
-    playerRef?.current?.seekTo?.(newPos, 'seconds');
+    seekPlayer(newPos);
     sendControlAction('seek', { position_seconds: newPos });
   };
 
   const handleSeekForward = () => {
     const newPos = getPos() + 10;
-    playerRef?.current?.seekTo?.(newPos, 'seconds');
+    seekPlayer(newPos);
     sendControlAction('seek', { position_seconds: newPos });
   };
 
