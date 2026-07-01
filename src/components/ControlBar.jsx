@@ -1,52 +1,83 @@
-import { useRoom } from '../context/useRoom';
+import { useEffect, useState } from 'react';
 import { sendControlAction } from '../services/socket';
 
+const POLL_INTERVAL_MS = 250;
+
 export default function ControlBar({ playerRef }) {
-  const { userRole, playbackState } = useRoom();
-  const isPresenter = userRole === 'presenter';
+  const [duration, setDuration] = useState(0);
+  const [livePosition, setLivePosition] = useState(0);
+  const [isPaused, setIsPaused] = useState(true);
+  const [dragPosition, setDragPosition] = useState(null);
 
-  if (!isPresenter) {
-    return (
-      <div className="control-bar">
-        <div
-          className="control-bar__dot control-bar__dot--live"
-          style={{ opacity: playbackState.isPlaying ? 1 : 0.3 }}
-        />
-        <span className="control-bar__status">
-          {playbackState.isPlaying ? 'lecture en cours' : 'en pause'}
-        </span>
-        <span className="control-bar__role">guest</span>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const player = playerRef?.current;
+      if (!player) return;
+      if (Number.isFinite(player.duration) && player.duration > 0) setDuration(player.duration);
+      if (dragPosition === null) setLivePosition(player.currentTime ?? 0);
+      setIsPaused(player.paused);
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [playerRef, dragPosition]);
 
-  const getPos = () => playerRef?.current?.currentTime ?? playbackState.currentTimeSec;
   const seekPlayer = (position) => {
-    if (playerRef?.current) playerRef.current.currentTime = position;
+    const clamped = duration ? Math.min(Math.max(position, 0), duration) : Math.max(position, 0);
+    if (playerRef?.current) playerRef.current.currentTime = clamped;
+    setLivePosition(clamped);
+    sendControlAction('seek', { position_seconds: clamped });
   };
 
-  const handleSeekBackward = () => {
-    const newPos = Math.max(0, getPos() - 10);
-    seekPlayer(newPos);
-    sendControlAction('seek', { position_seconds: newPos });
+  const handleSeekBackward = () => seekPlayer(livePosition - 10);
+  const handleSeekForward = () => seekPlayer(livePosition + 10);
+
+  const handleTogglePlay = () => {
+    const player = playerRef?.current;
+    if (!player) return;
+    if (player.paused) player.play();
+    else player.pause();
   };
 
-  const handleSeekForward = () => {
-    const newPos = getPos() + 10;
-    seekPlayer(newPos);
-    sendControlAction('seek', { position_seconds: newPos });
+  const displayedPosition = dragPosition ?? livePosition;
+
+  const handleScrubInput = (e) => setDragPosition(Number(e.target.value));
+
+  const commitScrub = (e) => {
+    seekPlayer(Number(e.target.value));
+    setDragPosition(null);
   };
 
   return (
     <div className="control-bar">
+      <button
+        className="control-bar__btn control-bar__btn--play"
+        onClick={handleTogglePlay}
+        aria-label={isPaused ? 'Lecture' : 'Pause'}
+      >
+        {isPaused ? '▶ lecture' : '❚❚ pause'}
+      </button>
       <button className="control-bar__btn" onClick={handleSeekBackward} aria-label="Reculer de 10s">
         ← 10s
       </button>
-      <span className="control-bar__hint">▶ via le lecteur</span>
+      <input
+        className="control-bar__scrub"
+        type="range"
+        min={0}
+        max={duration || 0}
+        step={0.1}
+        value={Math.min(displayedPosition, duration || displayedPosition)}
+        disabled={!duration}
+        onChange={handleScrubInput}
+        onMouseUp={commitScrub}
+        onTouchEnd={commitScrub}
+        onKeyUp={commitScrub}
+        aria-label="Position de lecture"
+      />
       <button className="control-bar__btn" onClick={handleSeekForward} aria-label="Avancer de 10s">
         10s →
       </button>
-      <span className="control-bar__timecode">{formatTime(playbackState.currentTimeSec)}</span>
+      <span className="control-bar__timecode">
+        {formatTime(displayedPosition)} / {formatTime(duration)}
+      </span>
     </div>
   );
 }

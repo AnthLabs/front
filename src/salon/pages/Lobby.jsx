@@ -6,7 +6,7 @@ import lobbyBg from '../../assets/lobby-bg.png';
 
 export default function Lobby() {
   const navigate = useNavigate();
-  const { setRoomId, setUserRole } = useRoom();
+  const { setRoomId } = useRoom();
 
   const [joinId, setJoinId] = useState('');
   const [error, setError] = useState(null);
@@ -18,7 +18,6 @@ export default function Lobby() {
     try {
       const room = await createRoom();
       setRoomId(room.id);
-      setUserRole('presenter');
       navigate(`/room/${room.id}`);
     } catch (err) {
       setError(err.message);
@@ -35,7 +34,6 @@ export default function Lobby() {
     try {
       const room = await getRoom(joinId.trim());
       setRoomId(room.id);
-      setUserRole('guest');
       navigate(`/room/${room.id}`);
     } catch (err) {
       setError(err.message);

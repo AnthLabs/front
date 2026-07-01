@@ -4,60 +4,55 @@ import { useRoom } from '../context/useRoom';
 import { sendControlAction } from '../services/socket';
 
 const SYNC_DRIFT_THRESHOLD_SEC = 1.5;
+const ECHO_SUPPRESSION_WINDOW_MS = 600;
 
 export default function VideoPlayer({ streamUrl, playerRef }) {
   const lastPosRef = useRef(0);
-  const { userRole, playbackState } = useRoom();
-  const isPresenter = userRole === 'presenter';
+  const lastProgrammaticSyncAtRef = useRef(0);
+  const { playbackState } = useRoom();
 
-  // Invité : recale sur l'état WS
   useEffect(() => {
-    if (isPresenter || !playbackState.lastUpdatedAt) return;
     const player = playerRef.current;
-    if (!player) return;
+    if (!player || !playbackState.lastUpdatedAt) return;
 
     const networkDelaySec = (Date.now() - playbackState.lastUpdatedAt) / 1000;
     const expectedTimeSec =
       playbackState.currentTimeSec + (playbackState.isPlaying ? networkDelaySec : 0);
     const currentTime = player.currentTime ?? 0;
+    let touchedPlayer = false;
 
     if (Math.abs(currentTime - expectedTimeSec) > SYNC_DRIFT_THRESHOLD_SEC) {
       player.currentTime = expectedTimeSec;
+      touchedPlayer = true;
     }
-  }, [playbackState, isPresenter, playerRef]);
+
+    if (playbackState.isPlaying && player.paused) {
+      player.play();
+      touchedPlayer = true;
+    } else if (!playbackState.isPlaying && !player.paused) {
+      player.pause();
+      touchedPlayer = true;
+    }
+
+    if (touchedPlayer) lastProgrammaticSyncAtRef.current = Date.now();
+  }, [playbackState, playerRef]);
+
+  const isEchoOfOwnSync = () =>
+    Date.now() - lastProgrammaticSyncAtRef.current < ECHO_SUPPRESSION_WINDOW_MS;
 
   const handleProgress = (event) => {
     lastPosRef.current = event.target?.currentTime ?? 0;
   };
 
-  // Présentateur : les contrôles natifs YouTube déclenchent onPlay/onPause → WS
-  const handlePlay = () => {
-    if (!isPresenter) return;
-    const pos = playerRef.current?.currentTime ?? 0;
-    sendControlAction('play', { position_seconds: pos });
+  const handlePlay = (event) => {
+    if (isEchoOfOwnSync()) return;
+    sendControlAction('play', { position_seconds: event.target?.currentTime ?? 0 });
   };
 
-  const handlePause = () => {
-    if (!isPresenter) return;
-    const pos = playerRef.current?.currentTime ?? 0;
-    sendControlAction('pause', { position_seconds: pos });
+  const handlePause = (event) => {
+    if (isEchoOfOwnSync()) return;
+    sendControlAction('pause', { position_seconds: event.target?.currentTime ?? 0 });
   };
-
-  if (isPresenter) {
-    return (
-      <ReactPlayer
-        ref={playerRef}
-        src={streamUrl}
-        width="100%"
-        height="100%"
-        controls
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onProgress={handleProgress}
-        onError={(err) => console.error('[Player] erreur :', err)}
-      />
-    );
-  }
 
   return (
     <ReactPlayer
@@ -66,7 +61,8 @@ export default function VideoPlayer({ streamUrl, playerRef }) {
       width="100%"
       height="100%"
       controls={false}
-      playing={playbackState.isPlaying}
+      onPlay={handlePlay}
+      onPause={handlePause}
       onProgress={handleProgress}
       onError={(err) => console.error('[Player] erreur :', err)}
     />

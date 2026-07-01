@@ -9,7 +9,7 @@ import ControlBar from '../../components/ControlBar';
 export default function Room() {
   const { roomId: roomIdParam } = useParams();
   const navigate = useNavigate();
-  const { roomId, setRoomId, userRole, videoUrl, setVideoUrl, setPlaybackState } = useRoom();
+  const { roomId, setRoomId, videoUrl, setVideoUrl, setPlaybackState } = useRoom();
 
   const [wsError, setWsError] = useState(null);
   const [wsStatus, setWsStatus] = useState('connecting');
@@ -17,11 +17,10 @@ export default function Room() {
   const [uploadError, setUploadError] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  const presenterFileRef = useRef(null);
+  const fileInputRef = useRef(null);
   const playerRef = useRef(null);
 
   const activeRoomId = roomId ?? roomIdParam;
-  const isPresenter = userRole === 'presenter';
   const activeStreamUrl = videoUrl;
 
   useEffect(() => {
@@ -92,15 +91,11 @@ export default function Room() {
           <VideoPlayer streamUrl={activeStreamUrl} playerRef={playerRef} />
         ) : (
           <div className="room__no-video">
-            {isPresenter
-              ? 'aucun flux — définissez une URL ou téléversez un fichier ci-dessous'
-              : 'en attente du présentateur…'}
+            aucun flux — définissez une URL ou téléversez un fichier ci-dessous
           </div>
         )}
 
         <div className="room__badge">
-          <span className="room__badge-role">{userRole}</span>
-          <span className="room__badge-sep">·</span>
           <span>{activeRoomId}</span>
         </div>
 
@@ -111,43 +106,41 @@ export default function Room() {
 
       <ControlBar playerRef={playerRef} />
 
-      {isPresenter && (
-        <form className="room__video-bar" onSubmit={handleChangeVideo}>
-          <span className="room__video-bar-label">flux</span>
-          <input
-            className="input"
-            type="text"
-            placeholder="youtube.com/watch?v=… ou https://…/stream.m3u8"
-            value={pendingVideoUrl}
-            onChange={(e) => setPendingVideoUrl(e.target.value)}
-            spellCheck={false}
-          />
-          <button className="btn" type="submit" disabled={!pendingVideoUrl.trim()}>
-            charger →
-          </button>
-          <span className="room__video-bar-sep">ou</span>
-          <button
-            className="btn"
-            type="button"
-            disabled={uploading}
-            onClick={() => presenterFileRef.current?.click()}
-          >
-            {uploading ? 'upload…' : 'téléverser'}
-          </button>
-          <input
-            ref={presenterFileRef}
-            type="file"
-            accept="video/*"
-            hidden
-            onChange={handleFileSelect}
-          />
-          <span className={`room__ws-status room__ws-status--${wsStatus}`}>
-            {wsStatus === 'open' ? '● ws' : wsStatus === 'connecting' ? '○ ws…' : '✗ ws'}
-          </span>
-          {wsError && <span className="room__ws-error">✗ {wsError}</span>}
-          {uploadError && <span className="room__ws-error">✗ upload: {uploadError}</span>}
-        </form>
-      )}
+      <form className="room__video-bar" onSubmit={handleChangeVideo}>
+        <span className="room__video-bar-label">flux</span>
+        <input
+          className="input"
+          type="text"
+          placeholder="youtube.com/watch?v=… ou https://…/stream.m3u8"
+          value={pendingVideoUrl}
+          onChange={(e) => setPendingVideoUrl(e.target.value)}
+          spellCheck={false}
+        />
+        <button className="btn" type="submit" disabled={!pendingVideoUrl.trim()}>
+          charger →
+        </button>
+        <span className="room__video-bar-sep">ou</span>
+        <button
+          className="btn"
+          type="button"
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {uploading ? 'upload…' : 'téléverser'}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*"
+          hidden
+          onChange={handleFileSelect}
+        />
+        <span className={`room__ws-status room__ws-status--${wsStatus}`}>
+          {wsStatus === 'open' ? '● ws' : wsStatus === 'connecting' ? '○ ws…' : '✗ ws'}
+        </span>
+        {wsError && <span className="room__ws-error">✗ {wsError}</span>}
+        {uploadError && <span className="room__ws-error">✗ upload: {uploadError}</span>}
+      </form>
     </div>
   );
 }

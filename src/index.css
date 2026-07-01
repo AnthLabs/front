@@ -435,3 +435,36 @@ body {
   flex: 1;
   text-align: center;
 }
+
+.control-bar__scrub {
+  flex: 1;
+  margin: 0 10px;
+  height: 3px;
+  appearance: none;
+  background: var(--border-bright);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.control-bar__scrub:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.control-bar__scrub::-webkit-slider-thumb {
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.control-bar__scrub::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
