@@ -1,6 +1,5 @@
-import { createContext, useState } from 'react';
-
-export const RoomContext = createContext(null);
+import { useState } from 'react';
+import { RoomContext } from './roomContext';
 
 export function RoomProvider({ children }) {
   const [roomId, setRoomId] = useState(null);
@@ -12,9 +11,12 @@ export function RoomProvider({ children }) {
   });
 
   const value = {
-    roomId, setRoomId,
-    videoUrl, setVideoUrl,
-    playbackState, setPlaybackState,
+    roomId,
+    setRoomId,
+    videoUrl,
+    setVideoUrl,
+    playbackState,
+    setPlaybackState,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
